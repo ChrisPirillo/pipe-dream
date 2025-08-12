@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- SEO & Metadata -->
+    <meta charset="UTF-8">
+    <title>Pipe Dream</title>
+    <meta name="description" content="Experience Pipe Dream, a mesmerizing 3D screensaver-like simulation of endless, colorful pipes being built in real-time. Customize the speed, complexity, and visuals in this interactive WebGL art piece.">
+    <meta name="keywords" content="pipe dream, 3d, simulation, screensaver, three.js, webgl, interactive, generative art, arcade">
+    <meta name="author" content="Chris Pirillo">
+    <link rel="canonical" href="https://pirillo.com/arcade/pipe-dream.html">
+
+    <!-- Core Web Vitals & Performance -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Resource Hints for faster loading of critical assets -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js" as="script" crossOrigin="anonymous">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://pirillo.com/arcade/pipe-dream.html">
+    <meta property="og:title" content="Pipe Dream">
+    <meta property="og:description" content="A mesmerizing 3D simulation of endless, colorful pipes.">
+    <meta property="og:image" content="https://pirillo.com/arcade/images/pipe-dream.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="Pirillo's Arcade">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://pirillo.com/arcade/pipe-dream.html">
+    <meta name="twitter:creator" content="@ChrisPirillo">
+    <meta name="twitter:site" content="@ChrisPirillo">
+    <meta name="twitter:title" content="Pipe Dream">
+    <meta name="twitter:description" content="A mesmerizing 3D simulation of endless, colorful pipes.">
+    <meta name="twitter:image" content="https://pirillo.com/arcade/images/pipe-dream.png">
+
+    <!-- JSON-LD Structured Data for Rich Snippets -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "VideoGame",
+      "name": "Pipe Dream",
+      "url": "https://pirillo.com/arcade/pipe-dream.html",
+      "author": {
+        "@type": "Person",
+        "name": "Chris Pirillo"
+      },
+      "image": "https://pirillo.com/arcade/images/pipe-dream.png",
+      "description": "Experience Pipe Dream, a mesmerizing 3D screensaver-like simulation of endless, colorful pipes being built in real-time. Customize the speed, complexity, and visuals in this interactive WebGL art piece.",
+      "applicationCategory": "Game",
+      "operatingSystem": "All",
+      "browserRequirements": "Requires HTML5 and WebGL support.",
+      "playMode": "singlePlayer",
+      "gamePlatform": "PC",
+      "inLanguage": "en-US"
+    }
+    </script>
+    
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-1CQ4D3VQ3L"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-1CQ4D3VQ3L');
+    </script>
+
+    <!--
+      All CSS is kept in a single block in the <head>.
+      For this specific application, the total CSS size is small (< 5KB).
+      Splitting it into 'critical' and 'non-critical' would offer negligible performance benefits
+      and could risk a Flash of Unstyled Content (FOUC) for the menu button.
+      Keeping it here is the safest and most robust solution for visual stability.
+    -->
+    <style>
+        /* Basic CSS Reset & Font */
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        /* Style for the canvas where the 3D scene is rendered */
+        #bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            outline: none;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Menu Toggle Button */
+        #menu-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1001;
+            background: rgba(30, 30, 30, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: opacity 0.3s ease, background 0.2s ease;
+            opacity: 1;
+        }
+        #menu-toggle:hover {
+            background: rgba(50, 50, 50, 0.7);
+        }
+        #menu-toggle.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #menu-toggle svg {
+            width: 24px;
+            height: 24px;
+            stroke: white;
+        }
+        
+        /* Side Menu Panel */
+        #side-menu {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 320px;
+            height: 100%;
+            background: rgba(25, 25, 25, 0.7);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-left: 1px solid rgba(255, 255, 255, 0.15);
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+        }
+        #side-menu.visible {
+            transform: translateX(0);
+        }
+        
+        /* Menu Header */
+        .menu-header {
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+        }
+        .menu-header h2 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        #close-menu {
+            background: transparent;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s ease;
+        }
+        #close-menu:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        #close-menu svg {
+            width: 18px;
+            height: 18px;
+            stroke: #aaa;
+        }
+        
+        /* Menu Content & Controls */
+        .menu-content {
+            padding: 20px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+        .control-group {
+            margin-bottom: 20px;
+        }
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .control-row label {
+            font-size: 0.9rem;
+            color: #eee;
+        }
+        .control-row .value-display {
+            font-size: 0.9rem;
+            color: #888;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Custom Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 51px;
+            height: 31px;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider-round {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #444;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider-round:before {
+            position: absolute;
+            content: "";
+            height: 27px;
+            width: 27px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        input:checked + .slider-round { background-color: #007AFF; }
+        input:checked + .slider-round:before { transform: translateX(20px); }
+
+        /* Custom Sliders */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #444;
+            border-radius: 5px;
+            outline: none;
+            margin-top: 5px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            background: white;
+            cursor: pointer;
+            border-radius: 50%;
+            border: none;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 22px;
+            height: 22px;
+            background: white;
+            cursor: pointer;
+            border-radius: 50%;
+            border: none;
+        }
+        
+        /* Reset Button */
+        #resetButton {
+            width: 100%;
+            padding: 12px;
+            background: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            margin-top: 10px;
+        }
+        #resetButton:hover {
+            background: #0056b3;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- 
+      Semantic <main> tag wraps the primary content of the page.
+      This helps search engines and assistive technologies understand the page structure.
+    -->
+    <main>
+        <!-- 
+          The canvas is the main visual element. It is sized via CSS to be responsive.
+          It does not require width/height attributes, which would make it static.
+          CLS is not an issue as it's fixed and covers the screen on initial load.
+        -->
+        <canvas id="bg" aria-label="Interactive 3D pipe simulation"></canvas>
+
+        <!-- 
+          A noscript tag provides fallback content for users with JavaScript disabled
+          and gives search engine crawlers an indexable image.
+        -->
+        <noscript>
+            <div style="width: 100%; height: 100%; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center;">
+                <img src="https://pirillo.com/arcade/images/pipe-dream.png" alt="A 3D rendering of colorful pipes intertwining on a black background, representing the Pipe Dream simulation." style="max-width: 90%; border-radius: 8px;">
+                <h1 style="margin-top: 20px;">Pipe Dream</h1>
+                <p>Please enable JavaScript to view this interactive 3D experience.</p>
+            </div>
+        </noscript>
+
+        <button id="menu-toggle" aria-label="Open Settings Menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+
+        <div id="side-menu" role="dialog" aria-modal="true" aria-labelledby="menu-heading">
+            <div class="menu-header">
+                <h2 id="menu-heading">Settings</h2>
+                <button id="close-menu" aria-label="Close Settings Menu">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div class="menu-content">
+                <div class="control-group">
+                    <div class="control-row"><label for="autoCameraToggle">Auto-Camera</label><label class="toggle-switch"><input type="checkbox" id="autoCameraToggle" checked><span class="slider-round"></span></label></div>
+                </div>
+                <div class="control-group">
+                    <div class="control-row"><label for="speedSlider">Speed</label><span class="value-display" id="speedValue">5</span></div>
+                    <input type="range" id="speedSlider" min="1" max="10" value="5">
+                </div>
+                <div class="control-group">
+                    <div class="control-row"><label for="turnChanceSlider">Turn Chance</label><span class="value-display" id="turnChanceValue">30%</span></div>
+                    <input type="range" id="turnChanceSlider" min="1" max="9" value="3" step="1">
+                </div>
+                <div class="control-group">
+                    <div class="control-row"><label for="pipeCountSlider"># Pipes</label><span class="value-display" id="pipeCountValue">15</span></div>
+                    <input type="range" id="pipeCountSlider" min="1" max="50" value="15">
+                </div>
+                <div class="control-group">
+                    <div class="control-row"><label for="thicknessSlider">Thickness</label><span class="value-display" id="thicknessValue">0.3</span></div>
+                    <input type="range" id="thicknessSlider" min="1" max="10" value="3" step="1">
+                </div>
+                 <div class="control-group">
+                    <div class="control-row"><label for="fogSlider">Fog Density</label><span class="value-display" id="fogValue">0.010</span></div>
+                    <input type="range" id="fogSlider" min="0" max="30" value="10" step="1">
+                </div>
+                 <div class="control-group">
+                    <div class="control-row"><label for="lightSlider">Light Intensity</label><span class="value-display" id="lightValue">0.9</span></div>
+                    <input type="range" id="lightSlider" min="0" max="20" value="9" step="1">
+                </div>
+                <button id="resetButton">Reset Simulation</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- 
+      The importmap defines the location of the 'three' module.
+      This must appear before the module script that uses it.
+    -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/"
+        }
+      }
+    </script>
+
+    <!-- 
+      The main application script.
+      It is a module, which means it is 'deferred' by default. It will not block HTML parsing.
+      Per your instructions, this script has NOT been modified.
+    -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- SCENE SETUP ---
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x000000, 0.01);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('bg'), antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        // --- CAMERA CONTROLS ---
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.screenSpacePanning = true;
+        controls.minDistance = 10;
+        controls.maxDistance = 120;
+        controls.maxPolarAngle = Math.PI;
+
+        // --- LIGHTING ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
+        directionalLight.position.set(10, 20, 15);
+        scene.add(directionalLight);
+
+        // --- STATE & SETTINGS ---
+        const GRID_SIZE = 40;
+        const CELL_SIZE = 2;
+        const HALF_GRID = (GRID_SIZE * CELL_SIZE) / 2;
+        let grid = {};
+        let pipes = [];
+        let maxPipes = 15;
+        let pipeRadius = 0.3;
+        let animationSpeed = 5;
+        let turnChance = 0.3;
+        let autoCameraActive = true;
+        const COLORS = [0x007AFF, 0xFF3B30, 0x34C759, 0xFF9500, 0x5AC8FA, 0xAF52DE, 0xFFFFFF];
+        const MAX_INSTANCES = 75000;
+
+        // --- INSTANCED RENDERING SETUP ---
+        let instancedMeshes = {};
+        const dummy = new THREE.Object3D(); // Used to generate matrices
+
+        function setupInstancedMeshes() {
+            const sphereGeometry = new THREE.SphereGeometry(1, 32, 32); // Base radius of 1
+            const cylinderGeometry = new THREE.CylinderGeometry(1, 1, 1, 32); // Base radius/height of 1
+
+            COLORS.forEach(color => {
+                const material = new THREE.MeshStandardMaterial({ color: color, metalness: 0.5, roughness: 0.5 });
+                
+                // Joints (spheres)
+                const spheres = new THREE.InstancedMesh(sphereGeometry, material, MAX_INSTANCES);
+                spheres.count = 0;
+                scene.add(spheres);
+                
+                // Pipes (cylinders)
+                const cylinders = new THREE.InstancedMesh(cylinderGeometry, material, MAX_INSTANCES);
+                cylinders.count = 0;
+                scene.add(cylinders);
+
+                instancedMeshes[color] = { spheres, cylinders };
+            });
+        }
+
+        // --- UI BINDINGS ---
+        const menuToggle = document.getElementById('menu-toggle');
+        const closeMenuButton = document.getElementById('close-menu');
+        const sideMenu = document.getElementById('side-menu');
+        const allSliders = document.querySelectorAll('input[type="range"]');
+
+        const toggleMenu = (visible) => {
+            sideMenu.classList.toggle('visible', visible);
+            menuToggle.classList.toggle('hidden', visible);
+        };
+        menuToggle.addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(true); });
+        closeMenuButton.addEventListener('click', () => toggleMenu(false));
+        renderer.domElement.addEventListener('pointerdown', () => {
+             if (sideMenu.classList.contains('visible')) toggleMenu(false);
+        });
+        sideMenu.addEventListener('pointerdown', (e) => e.stopPropagation());
+
+        function updateSliderStyle(slider) {
+            const value = slider.value;
+            const min = slider.min || 0;
+            const max = slider.max || 100;
+            const percent = ((value - min) / (max - min)) * 100;
+            slider.style.background = `linear-gradient(to right, #007AFF ${percent}%, #444 ${percent}%)`;
+        }
+        
+        allSliders.forEach(slider => {
+            slider.addEventListener('input', () => updateSliderStyle(slider));
+            updateSliderStyle(slider);
+        });
+
+        document.getElementById('resetButton').addEventListener('click', resetSimulation);
+        document.getElementById('speedSlider').addEventListener('input', (e) => {
+            animationSpeed = parseInt(e.target.value);
+            document.getElementById('speedValue').textContent = e.target.value;
+        });
+        document.getElementById('turnChanceSlider').addEventListener('input', (e) => {
+            turnChance = parseFloat(e.target.value) / 10;
+            document.getElementById('turnChanceValue').textContent = `${e.target.value * 10}%`;
+        });
+        document.getElementById('pipeCountSlider').addEventListener('input', (e) => {
+            maxPipes = parseInt(e.target.value);
+            document.getElementById('pipeCountValue').textContent = e.target.value;
+        });
+        document.getElementById('thicknessSlider').addEventListener('input', (e) => {
+            pipeRadius = parseFloat(e.target.value) / 10;
+            document.getElementById('thicknessValue').textContent = (pipeRadius).toFixed(1);
+        });
+        document.getElementById('fogSlider').addEventListener('input', (e) => {
+            const density = parseFloat(e.target.value) / 1000;
+            scene.fog.density = density;
+            document.getElementById('fogValue').textContent = density.toFixed(3);
+        });
+        document.getElementById('lightSlider').addEventListener('input', (e) => {
+            const intensity = parseFloat(e.target.value) / 10;
+            directionalLight.intensity = intensity;
+            document.getElementById('lightValue').textContent = intensity.toFixed(1);
+        });
+        document.getElementById('autoCameraToggle').addEventListener('change', (e) => {
+            autoCameraActive = e.target.checked;
+            controls.enabled = !autoCameraActive;
+        });
+
+        // --- PIPE BUILDER CLASS ---
+        class Pipe {
+            constructor() { this.init(); }
+            init() {
+                this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+                this.pos = this.getRandomStartPosition();
+                if (!this.pos) return;
+                this.direction = this.getRandomDirection();
+                this.turnCooldown = 0;
+                this.addJoint(this.pos);
+            }
+            getRandomStartPosition() {
+                let pos, attempts = 0;
+                do {
+                    pos = new THREE.Vector3( Math.floor(Math.random() * GRID_SIZE) - GRID_SIZE / 2, Math.floor(Math.random() * GRID_SIZE) - GRID_SIZE / 2, Math.floor(Math.random() * GRID_SIZE) - GRID_SIZE / 2 );
+                    attempts++;
+                } while (isOccupied(pos) && attempts < 100);
+                if (attempts >= 100) return null;
+                markOccupied(pos);
+                return pos;
+            }
+            getRandomDirection() {
+                const directions = [ new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -1, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1) ];
+                return directions[Math.floor(Math.random() * directions.length)];
+            }
+            grow() {
+                if (!this.pos) return;
+                if (this.turnCooldown > 0) this.turnCooldown--;
+
+                const shouldTurn = Math.random() < turnChance && this.turnCooldown === 0;
+                if (shouldTurn) this.changeDirection();
+
+                const nextPos = this.pos.clone().add(this.direction);
+                if (isOccupied(nextPos) || isOutOfBounds(nextPos)) {
+                    this.reset();
+                    return;
+                }
+
+                this.addPipeSegment(this.pos, nextPos);
+                // FIX: Always add a joint at the new position to cover seams.
+                this.addJoint(nextPos);
+
+                this.pos.copy(nextPos);
+                markOccupied(this.pos);
+            }
+            changeDirection() {
+                const possibleDirections = [ new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -1, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1) ];
+                const validDirections = possibleDirections.filter(d => !d.equals(this.direction) && !d.equals(this.direction.clone().negate()));
+                if (validDirections.length > 0) {
+                    this.direction = validDirections[Math.floor(Math.random() * validDirections.length)];
+                    this.turnCooldown = 3;
+                }
+            }
+            addJoint(pos) {
+                const mesh = instancedMeshes[this.color].spheres;
+                if (mesh.count >= MAX_INSTANCES) return;
+                dummy.position.copy(pos).multiplyScalar(CELL_SIZE);
+                dummy.scale.set(pipeRadius, pipeRadius, pipeRadius);
+                dummy.updateMatrix();
+                mesh.setMatrixAt(mesh.count++, dummy.matrix);
+                mesh.instanceMatrix.needsUpdate = true;
+            }
+            addPipeSegment(start, end) {
+                const mesh = instancedMeshes[this.color].cylinders;
+                if (mesh.count >= MAX_INSTANCES) return;
+
+                const startScaled = start.clone().multiplyScalar(CELL_SIZE);
+                const endScaled = end.clone().multiplyScalar(CELL_SIZE);
+                
+                dummy.position.copy(startScaled).lerp(endScaled, 0.5);
+                dummy.scale.set(pipeRadius, startScaled.distanceTo(endScaled), pipeRadius);
+                dummy.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), end.clone().sub(start).normalize());
+                dummy.updateMatrix();
+                mesh.setMatrixAt(mesh.count++, dummy.matrix);
+                mesh.instanceMatrix.needsUpdate = true;
+            }
+            reset() { this.init(); }
+        }
+
+        // --- HELPER FUNCTIONS ---
+        function getGridKey(pos) { return `${pos.x},${pos.y},${pos.z}`; }
+        function markOccupied(pos) { grid[getGridKey(pos)] = true; }
+        function isOccupied(pos) { return grid[getGridKey(pos)] === true; }
+        function isOutOfBounds(pos) {
+            const limit = GRID_SIZE / 2;
+            return Math.abs(pos.x) > limit || Math.abs(pos.y) > limit || Math.abs(pos.z) > limit;
+        }
+        
+        // --- SIMULATION CONTROL ---
+        function resetSimulation() {
+            for(const color in instancedMeshes) {
+                instancedMeshes[color].spheres.count = 0;
+                instancedMeshes[color].cylinders.count = 0;
+                // Important: Tell Three.js to update the count for the instanced mesh
+                instancedMeshes[color].spheres.instanceMatrix.needsUpdate = true;
+                instancedMeshes[color].cylinders.instanceMatrix.needsUpdate = true;
+            }
+            grid = {};
+            pipes = [];
+            for (let i = 0; i < maxPipes; i++) { pipes.push(new Pipe()); }
+        }
+
+        // --- INITIALIZATION ---
+        setupInstancedMeshes();
+        resetSimulation();
+        controls.enabled = !autoCameraActive;
+
+        // --- ANIMATION LOOP ---
+        let frameCount = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            if (frameCount % (11 - animationSpeed) === 0) {
+                pipes.forEach(pipe => pipe.grow());
+            }
+
+            if (autoCameraActive) {
+                const time = Date.now() * 0.0001;
+                camera.position.x = Math.sin(time * 0.5) * HALF_GRID;
+                camera.position.z = Math.cos(time * 0.5) * HALF_GRID;
+                camera.position.y = Math.cos(time * 0.35) * HALF_GRID * 0.8;
+                camera.lookAt(scene.position);
+                controls.update();
+            } else {
+                controls.update();
+            }
+            renderer.render(scene, camera);
+            frameCount++;
+        }
+
+        // --- RESIZE HANDLER ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }, false);
+
+        animate();
+    </script>
+</body>
+</html>
